@@ -31,6 +31,9 @@ jobs:
             # Ejecutar nuevo container en puerto temporal
             docker run -d --name nestjs-app-new -p 3001:3000 nestjs-app:latest
 
+            echo "⏳ Waiting for container startup..."
+            sleep 5
+
             # Health check con timeout
             echo "🔍 Starting health check..."
             for i in {1..30}; do
@@ -48,7 +51,7 @@ jobs:
                 exit 0
               fi
               echo "⏳ Health check attempt $i/30..."
-              sleep 2
+              sleep 1
             done
 
             # Si llega aquí, falló

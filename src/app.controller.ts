@@ -14,6 +14,7 @@ export class AppController {
   getHealth() {
     return {
       status: 'ok',
+      ptime: process.uptime(),
       version: '1.1',
       timestamp: new Date().toISOString(),
     };
