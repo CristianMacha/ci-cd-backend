@@ -12,6 +12,10 @@ export class AppController {
 
   @Get('health')
   getHealth() {
-    return { status: 'ok', timestamp: new Date().toISOString() };
+    return {
+      status: 'ok',
+      version: '1.1',
+      timestamp: new Date().toISOString(),
+    };
   }
 }
