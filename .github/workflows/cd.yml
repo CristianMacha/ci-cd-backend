@@ -1,56 +1,33 @@
-name: Deploy to EC2
+name: Deploy to AWS EC2
+
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+
     steps:
-      - name: Debug secrets
-        run: |
-          echo "Host exists: ${{ secrets.EC2_HOST != '' }}"
-          echo "Key exists: ${{ secrets.EC2_SSH_KEY != '' }}"
-      - name: Deploy
-        uses: appleboy/ssh-action@v0.1.5
+      - name: Check code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            whoami
-            pwd
-            echo "SSH connection successful!"
-
-# name: Deploy to AWS EC2
-
-# on:
-#   push:
-#     branches: [main]
-#   workflow_run:
-#     workflows: ['CI']
-#     types: [completed]
-#     branches: [main]
-
-# jobs:
-#   deploy:
-#     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-#     runs-on: ubuntu-latest
-
-#     steps:
-#       - name: Check code
-#         uses: actions/checkout@v4
-
-#       - name: Deploy to EC2
-#         uses: appleboy/ssh-action@v1.0.0
-#         with:
-#           host: ${{ secrets.EC2_HOST }}
-#           username: ubuntu
-#           key: ${{ secrets.EC2_SSH_KEY }}
-#           script: |
-#             cd /app
-#             git pull origin main
-#             docker build -t nestjs-app .
-#             docker stop nestjs-app || true
-#             docker rm nestjs-app || true
-#             docker run -d --name nestjs-app --restart unless-stopped -p 3000:3000 -e NODE_ENV=production nestjs-app
-#             echo "Deployment completed successfully"
+            cd /app
+            git pull origin main
+            docker build -t nestjs-app .
+            docker stop nestjs-app || true
+            docker rm nestjs-app || true
+            docker run -d --name nestjs-app --restart unless-stopped -p 3000:3000 -e NODE_ENV=production nestjs-app
+            echo "Deployment completed successfully"
