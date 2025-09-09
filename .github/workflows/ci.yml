@@ -25,16 +25,16 @@ jobs:
           cache: 'npm'
 
       - name: Install dependecies
-        uses: npm ci
+        run: npm ci
 
       - name: Run linter
-        uses: npm run lint
+        run: npm run lint
 
       - name: Run tests
-        uses: npm run test
+        run: npm run test
 
       - name: Run test coverage
-        uses: npm run test:cov
+        run: npm run test:cov
 
       - name: Build project
-        uses: npm run build
+        run: npm run build
