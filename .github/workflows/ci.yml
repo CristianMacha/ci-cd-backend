@@ -8,11 +8,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-lastest
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [22]
+        node-version: [18, 22]
 
     steps:
       - name: Check code
