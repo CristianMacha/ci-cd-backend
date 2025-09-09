@@ -14,20 +14,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check code
-        uses: actions/checkout@v4
-
-      - name: Deploy to EC2
+      - name: Zero-downtime deploy to EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 15m
           script: |
             cd /app
             git pull origin main
-            docker build -t nestjs-app .
-            docker stop nestjs-app || true
-            docker rm nestjs-app || true
-            docker run -d --name nestjs-app --restart unless-stopped -p 3000:3000 -e NODE_ENV=production nestjs-app
-            echo "Deployment completed successfully"
+
+            # Build nueva imagen
+            docker build -t nestjs-app:latest .
+
+            # Ejecutar nuevo container en puerto temporal
+            docker run -d --name nestjs-app-new -p 3001:3000 nestjs-app:latest
+
+            # Health check con timeout
+            echo "🔍 Starting health check..."
+            for i in {1..30}; do
+              if curl -f http://localhost:3001/health 2>/dev/null; then
+                echo "✅ New container is healthy!"
+
+                # Swap containers sin downtime
+                docker stop nestjs-app || true
+                docker rm nestjs-app || true
+                docker stop nestjs-app-new
+                docker run -d --name nestjs-app -p 3000:3000 nestjs-app:latest
+                docker rm nestjs-app-new || true
+
+                echo "🚀 Zero-downtime deployment completed!"
+                exit 0
+              fi
+              echo "⏳ Health check attempt $i/30..."
+              sleep 2
+            done
+
+            # Si llega aquí, falló
+            echo "❌ Health check failed - rolling back"
+            docker stop nestjs-app-new || true
+            docker rm nestjs-app-new || true
+            echo "🔄 Old container still running"
+            exit 1
