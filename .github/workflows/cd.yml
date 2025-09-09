@@ -29,4 +29,5 @@ jobs:
             docker build -t nestjs-app .
             docker stop nestjs-app || true
             docker rm nestjs-app || true
-            docker run -d --name nestjs-app --restart unless-stopped -p 3000:3000 nestjs-app
+            docker run -d --name nestjs-app --restart unless-stopped -p 3000:3000 -e NODE_ENV=production nestjs-app
+            echo "Deployment completed successfully"
