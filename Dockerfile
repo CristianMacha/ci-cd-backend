@@ -12,7 +12,7 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestjs -u 1001
 COPY package*.json ./
-RUN npm ci --only=production && napm cache --force
+RUN npm ci --only=production && npm cache --force
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 USER nestjs
 EXPOSE 3000
