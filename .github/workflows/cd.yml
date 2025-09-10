@@ -34,29 +34,27 @@ jobs:
             echo "⏳ Waiting for container startup..."
             sleep 5
 
-            # Health check con timeout
+            # Health check
             echo "🔍 Starting health check..."
             for i in {1..30}; do
               if curl -f http://localhost:3001/health 2>/dev/null; then
                 echo "✅ New container is healthy!"
 
-                # Swap containers sin downtime
+                # Swap containers (reutilizar el probado)
                 docker stop nestjs-app || true
                 docker rm nestjs-app || true
-                docker stop nestjs-app-new
+                docker rename nestjs-app-new nestjs-app
+                docker stop nestjs-app
                 docker run -d --name nestjs-app -p 3000:3000 nestjs-app:latest
-                docker rm nestjs-app-new || true
 
                 echo "🚀 Zero-downtime deployment completed!"
                 exit 0
               fi
-              echo "⏳ Health check attempt $i/30..."
               sleep 1
             done
 
-            # Si llega aquí, falló
+            # Rollback
             echo "❌ Health check failed - rolling back"
             docker stop nestjs-app-new || true
             docker rm nestjs-app-new || true
-            echo "🔄 Old container still running"
             exit 1
