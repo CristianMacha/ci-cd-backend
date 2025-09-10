@@ -16,7 +16,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('CI/CD rc2');
+      expect(appController.getHello()).toBe('CI/CD rc22');
     });
   });
 });
