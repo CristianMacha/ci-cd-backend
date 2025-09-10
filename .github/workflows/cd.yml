@@ -23,7 +23,10 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 10m # ← AQUÍ, dentro de "with"
+          command_timeout: 10m
+          envs: N8N_PASSWORD
+        env:
+          N8N_PASSWORD: ${{ secrets.N8N_PASSWORD }}
           script: |
             echo "🚀 Starting deployment..."
             cd /app
@@ -32,15 +35,23 @@ jobs:
             git pull origin main
 
             echo "🔨 Building and deploying with docker-compose..."
+            export N8N_PASSWORD=$N8N_PASSWORD
             docker-compose down || true
-            docker-compose up -d --build
+            docker-compose up -d --build app
+            docker-compose up -d n8n
+            docker-compose up -d nginx
 
             echo "✅ Verifying containers..."
-            docker ps | grep -E "(nestjs-app|nginx-proxy)"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
             echo "🌐 Testing endpoints..."
             sleep 5
             curl -f http://localhost:80/health || echo "⚠️ Health check via nginx failed"
             curl -f http://localhost:3000/health || echo "⚠️ Direct app health check failed"
+            curl -f http://localhost:5678 -o /dev/null -s || echo "⚠️ n8n connection failed"
+
+            echo "📊 Service status:"
+            echo "• NestJS API: http://nestjs.vcristianms.com"
+            echo "• n8n Automation: http://n8n.vcristianms.com"
 
             echo "🎉 Deployment completed successfully!"
