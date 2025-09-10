@@ -24,10 +24,23 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo "🚀 Starting deployment..."
             cd /app
+
+            echo "📥 Pulling latest code..."
             git pull origin main
-            docker build -t nestjs-app .
+
+            echo "🔨 Building Docker image..."
+            docker build -t nestjs-app . --progress=plain
+
+            echo "🔄 Stopping old container..."
             docker stop nestjs-app || true
             docker rm nestjs-app || true
+
+            echo "🚀 Starting new container..."
             docker run -d --name nestjs-app --restart unless-stopped -p 3000:3000 -e NODE_ENV=production nestjs-app
-            echo "Deployment completed successfully"
+
+            echo "✅ Verifying container..."
+            docker ps | grep nestjs-app
+
+            echo "🎉 Deployment completed successfully"
