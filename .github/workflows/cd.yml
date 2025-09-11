@@ -26,21 +26,89 @@ jobs:
           command_timeout: 10m # ← AQUÍ, dentro de "with"
           script: |
             echo "🚀 Starting deployment..."
-            cd /app
+            
+            # Verificar directorio de trabajo
+            if [ ! -d "/app" ]; then
+              echo "❌ /app directory missing, creating..."
+              sudo mkdir -p /app
+              sudo chown ubuntu:ubuntu /app
+            fi
+            
+            cd /app || exit 1
+            
+            # Verificar git repository
+            if [ ! -d ".git" ]; then
+              echo "❌ Git repo missing, cloning..."
+              git clone git@github.com:CristianMacha/ci-cd-backend.git .
+            fi
 
             echo "📥 Pulling latest code..."
-            git pull origin main
+            git pull origin main || exit 1
+            
+            # Verificar archivos críticos
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "❌ docker-compose.yml missing!"
+              exit 1
+            fi
+            
+            if [ ! -f "Dockerfile" ]; then
+              echo "❌ Dockerfile missing!"
+              exit 1
+            fi
 
             echo "🔨 Building and deploying with docker-compose..."
             docker-compose down || true
-            docker-compose up -d --build
+            
+            # Build con manejo de errores
+            if ! docker-compose up -d --build; then
+              echo "❌ Docker compose failed!"
+              docker-compose logs
+              exit 1
+            fi
 
             echo "✅ Verifying containers..."
-            docker ps | grep -E "(nestjs-app|nginx-proxy)"
+            sleep 10
+            
+            # Verificar que containers estén corriendo
+            if ! docker ps | grep nestjs-app | grep -q "Up"; then
+              echo "❌ NestJS container not running!"
+              docker logs nestjs-app
+              exit 1
+            fi
+            
+            if ! docker ps | grep nginx-proxy | grep -q "Up"; then
+              echo "❌ Nginx container not running!"
+              docker logs nginx-proxy
+              exit 1
+            fi
 
             echo "🌐 Testing endpoints..."
-            sleep 5
-            curl -f http://localhost:80/health || echo "⚠️ Health check via nginx failed"
-            curl -f http://localhost:3000/health || echo "⚠️ Direct app health check failed"
+            
+            # Health checks con retry
+            for i in {1..5}; do
+              if curl -f http://localhost:3000/health 2>/dev/null; then
+                echo "✅ App health check passed"
+                break
+              elif [ $i -eq 5 ]; then
+                echo "❌ App health check failed after 5 attempts"
+                exit 1
+              else
+                echo "⏳ App health check attempt $i/5..."
+                sleep 5
+              fi
+            done
+            
+            for i in {1..5}; do
+              if curl -f http://localhost:80/health 2>/dev/null; then
+                echo "✅ Nginx health check passed"
+                break
+              elif [ $i -eq 5 ]; then
+                echo "❌ Nginx health check failed after 5 attempts"
+                exit 1
+              else
+                echo "⏳ Nginx health check attempt $i/5..."
+                sleep 5
+              fi
+            done
 
             echo "🎉 Deployment completed successfully!"
