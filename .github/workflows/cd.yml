@@ -62,7 +62,8 @@ jobs:
             # Pull latest image from Docker Hub (built in CI)
             echo "📥 Pulling latest image from Docker Hub..."
             export N8N_PASSWORD=$N8N_PASSWORD
-            docker pull ${{ secrets.DOCKER_USERNAME }}/nestjs-backend:latest
+            export DOCKER_USERNAME=$DOCKER_USERNAME
+            docker pull $DOCKER_USERNAME/nestjs-backend:latest
             
             echo "🔄 Quick container swap..."
             # Parar solo la app (nginx sigue corriendo)
@@ -72,9 +73,36 @@ jobs:
             # Solo levantar la app nueva (n8n y nginx siguen corriendo)
             docker-compose up -d app
             
-            # Asegurar que n8n y nginx estén corriendo, nginx se reinicia para cargar nueva config
+            # Asegurar que n8n esté corriendo primero
+            echo "🔄 Ensuring n8n is running..."
             docker-compose up -d --no-deps n8n
-            docker restart nginx-proxy
+            
+            # Verificar que n8n esté saludable
+            sleep 3
+            if ! docker ps | grep -q "n8n-automation.*Up"; then
+              echo "❌ n8n failed to start properly"
+              docker logs n8n-automation --tail 10
+              exit 1
+            fi
+            
+            # Manejar nginx de forma robusta
+            echo "🔄 Managing nginx proxy..."
+            if docker ps | grep -q "nginx-proxy.*Restarting"; then
+              echo "🔧 nginx is crashlooping, fixing..."
+              docker stop nginx-proxy || true
+              docker rm nginx-proxy || true
+            fi
+            
+            # Levantar nginx solo después de que n8n esté listo
+            docker-compose up -d nginx
+            sleep 2
+            
+            # Verificar que nginx esté funcionando
+            if ! docker ps | grep -q "nginx-proxy.*Up"; then
+              echo "❌ nginx failed to start"
+              docker logs nginx-proxy --tail 10
+              exit 1
+            fi
 
             echo "✅ Quick health check..."
             
