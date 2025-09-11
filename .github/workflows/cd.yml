@@ -57,58 +57,33 @@ jobs:
             fi
 
             echo "🔨 Building and deploying with docker-compose..."
-            docker-compose down || true
             
-            # Build con manejo de errores
-            if ! docker-compose up -d --build; then
-              echo "❌ Docker compose failed!"
-              docker-compose logs
-              exit 1
-            fi
+            # Build nueva imagen sin parar servicios
+            docker-compose build app
+            
+            # Rolling update: solo rebuild la app, mantener nginx corriendo
+            docker-compose up -d --no-deps app
+            
+            # Actualizar nginx solo si cambió
+            docker-compose up -d nginx
 
             echo "✅ Verifying containers..."
-            sleep 3
             
-            # Verificar que containers estén corriendo
-            if ! docker ps | grep nestjs-app | grep -q "Up"; then
-              echo "❌ NestJS container not running!"
-              docker logs nestjs-app
-              exit 1
-            fi
-            
-            if ! docker ps | grep nginx-proxy | grep -q "Up"; then
-              echo "❌ Nginx container not running!"
-              docker logs nginx-proxy
-              exit 1
-            fi
-
-            echo "🌐 Testing endpoints..."
-            
-            # Health checks optimizados (menos tiempo)
-            for i in {1..3}; do
-              if curl -f http://localhost:3000/health 2>/dev/null; then
-                echo "✅ App health check passed"
-                break
-              elif [ $i -eq 3 ]; then
-                echo "❌ App health check failed after 3 attempts"
-                exit 1
+            # Health check inmediato
+            sleep 2
+            if curl -f http://localhost:3000/health 2>/dev/null && curl -f http://localhost:80/health 2>/dev/null; then
+              echo "✅ All services healthy"
+            else
+              echo "⚠️ Services starting, checking in 3s..."
+              sleep 3
+              if curl -f http://localhost:3000/health 2>/dev/null && curl -f http://localhost:80/health 2>/dev/null; then
+                echo "✅ All services healthy"
               else
-                echo "⏳ App health check attempt $i/3..."
-                sleep 2
-              fi
-            done
-            
-            for i in {1..3}; do
-              if curl -f http://localhost:80/health 2>/dev/null; then
-                echo "✅ Nginx health check passed"
-                break
-              elif [ $i -eq 3 ]; then
-                echo "❌ Nginx health check failed after 3 attempts"
+                echo "❌ Health check failed"
+                docker ps
+                docker logs nestjs-app
                 exit 1
-              else
-                echo "⏳ Nginx health check attempt $i/3..."
-                sleep 2
               fi
-            done
+            fi
 
             echo "🎉 Deployment completed successfully!"
