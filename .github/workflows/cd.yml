@@ -65,39 +65,13 @@ jobs:
             export DOCKER_USERNAME=$DOCKER_USERNAME
             docker pull $DOCKER_USERNAME/nestjs-backend:latest
             
-            echo "🔄 Ultra-fast container swap..."
-            # Pre-crear contenedor con nuevo nombre
-            docker run -d --name nestjs-app-new \
-              --network app_app-network \
-              -p 3001:3000 \
-              -e NODE_ENV=production \
-              -e PORT=3000 \
-              $DOCKER_USERNAME/nestjs-backend:latest
-            
-            # Esperar a que el nuevo esté listo
-            sleep 3
-            if ! curl -f http://localhost:3001/health; then
-              echo "❌ New container failed to start"
-              docker logs nestjs-app-new --tail 10
-              docker rm -f nestjs-app-new
-              exit 1
-            fi
-            
-            echo "✅ New container ready, performing instant swap..."
-            # Swap instantáneo: remover viejo y renombrar nuevo
+            echo "🔄 Quick container swap..."
+            # Parar solo la app (nginx y n8n siguen corriendo)
             docker stop nestjs-app || true
             docker rm nestjs-app || true
-            docker stop nestjs-app-new
-            docker rm nestjs-app-new
             
-            # Crear el contenedor final en el puerto correcto
-            docker run -d --name nestjs-app \
-              --network app_app-network \
-              -p 3000:3000 \
-              -e NODE_ENV=production \
-              -e PORT=3000 \
-              --restart unless-stopped \
-              $DOCKER_USERNAME/nestjs-backend:latest
+            # Solo levantar la app nueva
+            docker-compose up -d app
             
             # Backend deployment only - n8n and nginx are stable services
             echo "ℹ️ n8n and nginx are managed as stable services, only deploying backend"
