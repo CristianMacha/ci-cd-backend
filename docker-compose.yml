@@ -45,6 +45,7 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - app
+      - n8n
     networks:
       - app-network
 
