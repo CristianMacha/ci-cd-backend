@@ -23,7 +23,10 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 10m # ← AQUÍ, dentro de "with"
+          command_timeout: 10m
+          envs: N8N_PASSWORD
+        env:
+          N8N_PASSWORD: ${{ secrets.N8N_PASSWORD }}
           script: |
             echo "🚀 Starting deployment..."
             
@@ -60,6 +63,7 @@ jobs:
             
             # Strategy: Build primero, luego swap rápido
             echo "📦 Building new image..."
+            export N8N_PASSWORD=$N8N_PASSWORD
             docker-compose build app
             
             echo "🔄 Quick container swap..."
@@ -67,8 +71,11 @@ jobs:
             docker stop nestjs-app || true
             docker rm nestjs-app || true
             
-            # Levantar nueva app inmediatamente
-            docker-compose up -d app nginx
+            # Solo levantar la app nueva (n8n y nginx siguen corriendo)
+            docker-compose up -d app
+            
+            # Asegurar que n8n y nginx estén corriendo sin rebuilding
+            docker-compose up -d --no-deps n8n nginx
 
             echo "✅ Quick health check..."
             
