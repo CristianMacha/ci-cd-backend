@@ -58,14 +58,13 @@ jobs:
 
             echo "🔨 Building and deploying with docker-compose..."
             
-            # Build nueva imagen sin parar servicios
-            docker-compose build app
+            # Limpiar containers corruptos
+            docker stop nestjs-app || true
+            docker rm nestjs-app || true
             
-            # Rolling update: solo rebuild la app, mantener nginx corriendo
-            docker-compose up -d --no-deps app
-            
-            # Actualizar nginx solo si cambió
-            docker-compose up -d nginx
+            # Build y deploy normal (más seguro)
+            docker-compose down || true
+            docker-compose up -d --build
 
             echo "✅ Verifying containers..."
             
