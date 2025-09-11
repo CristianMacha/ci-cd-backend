@@ -24,7 +24,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 10m
-          envs: N8N_PASSWORD
+          envs: N8N_PASSWORD,DOCKER_USERNAME
           script: |
             echo "🚀 Starting deployment..."
             
@@ -57,12 +57,12 @@ jobs:
               exit 1
             fi
 
-            echo "🔨 Building and deploying with docker-compose..."
+            echo "🔨 Deploying with Docker Hub image..."
             
-            # Strategy: Build primero, luego swap rápido
-            echo "📦 Building new image..."
+            # Pull latest image from Docker Hub (built in CI)
+            echo "📥 Pulling latest image from Docker Hub..."
             export N8N_PASSWORD=$N8N_PASSWORD
-            docker-compose build app
+            docker pull ${{ secrets.DOCKER_USERNAME }}/nestjs-backend:latest
             
             echo "🔄 Quick container swap..."
             # Parar solo la app (nginx sigue corriendo)
@@ -97,3 +97,4 @@ jobs:
             echo "🎉 Deployment completed successfully!"
         env:
           N8N_PASSWORD: ${{ secrets.N8N_PASSWORD }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
