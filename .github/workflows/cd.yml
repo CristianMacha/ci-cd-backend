@@ -72,8 +72,9 @@ jobs:
             # Solo levantar la app nueva (n8n y nginx siguen corriendo)
             docker-compose up -d app
             
-            # Asegurar que n8n y nginx estén corriendo sin rebuilding
-            docker-compose up -d --no-deps n8n nginx
+            # Asegurar que n8n y nginx estén corriendo, nginx se reinicia para cargar nueva config
+            docker-compose up -d --no-deps n8n
+            docker restart nginx-proxy
 
             echo "✅ Quick health check..."
             
