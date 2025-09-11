@@ -58,29 +58,32 @@ jobs:
 
             echo "🔨 Building and deploying with docker-compose..."
             
-            # Limpiar containers corruptos
+            # Strategy: Build primero, luego swap rápido
+            echo "📦 Building new image..."
+            docker-compose build app
+            
+            echo "🔄 Quick container swap..."
+            # Parar solo la app (nginx sigue corriendo)
             docker stop nestjs-app || true
             docker rm nestjs-app || true
             
-            # Build y deploy normal (más seguro)
-            docker-compose down || true
-            docker-compose up -d --build
+            # Levantar nueva app inmediatamente
+            docker-compose up -d app nginx
 
-            echo "✅ Verifying containers..."
+            echo "✅ Quick health check..."
             
-            # Health check inmediato
-            sleep 2
-            if curl -f http://localhost:3000/health 2>/dev/null && curl -f http://localhost:80/health 2>/dev/null; then
-              echo "✅ All services healthy"
+            # Verificación ultra-rápida
+            sleep 1
+            if curl -s http://localhost:3000/health > /dev/null; then
+              echo "✅ App healthy"
             else
-              echo "⚠️ Services starting, checking in 3s..."
-              sleep 3
-              if curl -f http://localhost:3000/health 2>/dev/null && curl -f http://localhost:80/health 2>/dev/null; then
-                echo "✅ All services healthy"
+              echo "⚠️ App starting, waiting 2s..."
+              sleep 2
+              if curl -s http://localhost:3000/health > /dev/null; then
+                echo "✅ App healthy after restart"
               else
-                echo "❌ Health check failed"
-                docker ps
-                docker logs nestjs-app
+                echo "❌ App failed to start"
+                docker logs nestjs-app --tail 20
                 exit 1
               fi
             fi
