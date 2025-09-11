@@ -67,7 +67,7 @@ jobs:
             fi
 
             echo "✅ Verifying containers..."
-            sleep 10
+            sleep 3
             
             # Verificar que containers estén corriendo
             if ! docker ps | grep nestjs-app | grep -q "Up"; then
@@ -84,30 +84,30 @@ jobs:
 
             echo "🌐 Testing endpoints..."
             
-            # Health checks con retry
-            for i in {1..5}; do
+            # Health checks optimizados (menos tiempo)
+            for i in {1..3}; do
               if curl -f http://localhost:3000/health 2>/dev/null; then
                 echo "✅ App health check passed"
                 break
-              elif [ $i -eq 5 ]; then
-                echo "❌ App health check failed after 5 attempts"
+              elif [ $i -eq 3 ]; then
+                echo "❌ App health check failed after 3 attempts"
                 exit 1
               else
-                echo "⏳ App health check attempt $i/5..."
-                sleep 5
+                echo "⏳ App health check attempt $i/3..."
+                sleep 2
               fi
             done
             
-            for i in {1..5}; do
+            for i in {1..3}; do
               if curl -f http://localhost:80/health 2>/dev/null; then
                 echo "✅ Nginx health check passed"
                 break
-              elif [ $i -eq 5 ]; then
-                echo "❌ Nginx health check failed after 5 attempts"
+              elif [ $i -eq 3 ]; then
+                echo "❌ Nginx health check failed after 3 attempts"
                 exit 1
               else
-                echo "⏳ Nginx health check attempt $i/5..."
-                sleep 5
+                echo "⏳ Nginx health check attempt $i/3..."
+                sleep 2
               fi
             done
 
