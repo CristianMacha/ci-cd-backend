@@ -46,7 +46,6 @@ jobs:
                 echo "🔄 Restarting nginx..."
                 docker stop nginx-proxy || true
                 docker rm nginx-proxy || true
-                export DOCKER_USERNAME=cristianmacha
                 docker-compose up -d nginx
                 ;;
               "reload-config")

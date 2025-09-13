@@ -38,7 +38,6 @@ jobs:
                 echo "🔄 Restarting n8n..."
                 docker stop n8n-automation || true
                 docker rm n8n-automation || true
-                export DOCKER_USERNAME=cristianmacha
                 docker-compose up -d n8n
                 ;;
               "update")
@@ -46,7 +45,6 @@ jobs:
                 docker pull n8nio/n8n:latest
                 docker stop n8n-automation || true
                 docker rm n8n-automation || true
-                export DOCKER_USERNAME=cristianmacha
                 docker-compose up -d n8n
                 ;;
               "logs")
