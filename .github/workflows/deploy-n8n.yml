@@ -1,0 +1,71 @@
+name: Deploy n8n Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'restart'
+        type: choice
+        options:
+        - restart
+        - update
+        - logs
+
+jobs:
+  deploy-n8n:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy n8n to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 5m
+          envs: N8N_PASSWORD,ACTION
+        env:
+          N8N_PASSWORD: ${{ secrets.N8N_PASSWORD }}
+          ACTION: ${{ github.event.inputs.action }}
+          script: |
+            echo "🔧 Managing n8n service - Action: $ACTION"
+            cd /app || exit 1
+            
+            case $ACTION in
+              "restart")
+                echo "🔄 Restarting n8n..."
+                docker stop n8n-automation || true
+                docker rm n8n-automation || true
+                export DOCKER_USERNAME=cristianmacha
+                docker-compose up -d n8n
+                ;;
+              "update")
+                echo "📥 Updating n8n to latest version..."
+                docker pull n8nio/n8n:latest
+                docker stop n8n-automation || true
+                docker rm n8n-automation || true
+                export DOCKER_USERNAME=cristianmacha
+                docker-compose up -d n8n
+                ;;
+              "logs")
+                echo "📋 n8n logs (last 50 lines):"
+                docker logs n8n-automation --tail 50
+                ;;
+            esac
+            
+            if [ "$ACTION" != "logs" ]; then
+              echo "✅ Verifying n8n status..."
+              sleep 5
+              if docker ps | grep -q "n8n-automation.*Up"; then
+                echo "✅ n8n is running successfully"
+                echo "🌐 Access at: https://n8n.vcristianms.com"
+              else
+                echo "❌ n8n failed to start"
+                docker logs n8n-automation --tail 10
+                exit 1
+              fi
+            fi
+            
+            echo "🎉 n8n operation completed!"

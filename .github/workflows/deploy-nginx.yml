@@ -1,0 +1,79 @@
+name: Deploy Nginx Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'restart'
+        type: choice
+        options:
+        - restart
+        - reload-config
+        - logs
+
+jobs:
+  deploy-nginx:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check code for latest nginx config
+        uses: actions/checkout@v4
+        
+      - name: Deploy nginx to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 5m
+          envs: ACTION
+        env:
+          ACTION: ${{ github.event.inputs.action }}
+          script: |
+            echo "🔧 Managing nginx service - Action: $ACTION"
+            cd /app || exit 1
+            
+            # Always pull latest nginx config
+            if [ "$ACTION" != "logs" ]; then
+              echo "📥 Pulling latest nginx configuration..."
+              git pull origin main
+            fi
+            
+            case $ACTION in
+              "restart")
+                echo "🔄 Restarting nginx..."
+                docker stop nginx-proxy || true
+                docker rm nginx-proxy || true
+                export DOCKER_USERNAME=cristianmacha
+                docker-compose up -d nginx
+                ;;
+              "reload-config")
+                echo "⚡ Reloading nginx configuration..."
+                docker exec nginx-proxy nginx -s reload || {
+                  echo "⚠️ Reload failed, performing full restart..."
+                  docker restart nginx-proxy
+                }
+                ;;
+              "logs")
+                echo "📋 nginx logs (last 50 lines):"
+                docker logs nginx-proxy --tail 50
+                ;;
+            esac
+            
+            if [ "$ACTION" != "logs" ]; then
+              echo "✅ Verifying nginx status..."
+              sleep 3
+              if docker ps | grep -q "nginx-proxy.*Up"; then
+                echo "✅ nginx is running successfully"
+                echo "🌐 Backend: https://nestjs.vcristianms.com"
+                echo "🌐 n8n: https://n8n.vcristianms.com"
+              else
+                echo "❌ nginx failed to start"
+                docker logs nginx-proxy --tail 10
+                exit 1
+              fi
+            fi
+            
+            echo "🎉 nginx operation completed!"
